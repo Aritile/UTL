@@ -1,14 +1,12 @@
 #include "benchmarks/common.hpp"
 
-#include "include/UTL/random.hpp"
-
 // _______________________ INCLUDES _______________________
 
 // UTL dependencies
 #include "include/UTL/log.hpp" // log::println()
 
 // Libraries to benchmarks against
-// None
+#include "benchmarks/thirdparty/ankerl/unordered_dense.h" // ankerl::unordered_dense::set<>
 
 // Standard headers
 #include <cstdint>         // uint64_t
@@ -20,6 +18,10 @@
 #include <vector>          // vector<>, pmr::vector<>
 
 // ____________________ IMPLEMENTATION ____________________
+
+// What are we trying to measure:
+//    - Performance overhead of trivial 'std::pmr::polymorphic_allocator'
+//    - Speedup from using various memory resources for various containers
 
 template <class Container, class PmrContainer, std::size_t count, class Func>
 void benchmark_push_back(Func&& inserter) {
@@ -34,8 +36,20 @@ void benchmark_push_back(Func&& inserter) {
         DO_NOT_OPTIMIZE_AWAY(container);
     });
 
-    benchmark("std::pmr::allocator<>", [&] {
+    benchmark("std::pmr::polymorphic_allocator<T>", [&] {
         PmrContainer container;
+        for (std::size_t i = 0; i < count; ++i) inserter(container, i);
+        DO_NOT_OPTIMIZE_AWAY(container);
+    });
+
+    benchmark("std::pmr::polymorphic_allocator<std::byte>", [&] {
+        PmrContainer container(std::pmr::polymorphic_allocator<std::byte>{});
+        for (std::size_t i = 0; i < count; ++i) inserter(container, i);
+        DO_NOT_OPTIMIZE_AWAY(container);
+    });
+
+    benchmark("std::pmr::polymorphic_allocator<void*>", [&] {
+        PmrContainer container(std::pmr::polymorphic_allocator<void*>{});
         for (std::size_t i = 0; i < count; ++i) inserter(container, i);
         DO_NOT_OPTIMIZE_AWAY(container);
     });
@@ -130,6 +144,10 @@ int main() {
     constexpr std::size_t medium = 800;
     constexpr std::size_t large  = 10'000;
 
+    using ankerl_set     = ankerl::unordered_dense::set<uint64>;
+    using ankerl_pmr_set = ankerl::unordered_dense::set<uint64, ankerl::unordered_dense::hash<uint64>,
+                                                        std::equal_to<uint64>, std::pmr::polymorphic_allocator<uint64>>;
+
     // Vector
     print_separator();
 
@@ -177,4 +195,13 @@ int main() {
 
     BENCHMARK_GROWTH(std::unordered_set<uint64>, std::pmr::unordered_set<uint64>, large,
                      [](auto&& container, std::size_t i) { container.emplace(i); });
+
+    // Unordered set (ankerl)
+    print_separator();
+
+    BENCHMARK_GROWTH(ankerl_set, ankerl_pmr_set, small, [](auto&& container, std::size_t i) { container.emplace(i); });
+
+    BENCHMARK_GROWTH(ankerl_set, ankerl_pmr_set, medium, [](auto&& container, std::size_t i) { container.emplace(i); });
+
+    BENCHMARK_GROWTH(ankerl_set, ankerl_pmr_set, large, [](auto&& container, std::size_t i) { container.emplace(i); });
 }
