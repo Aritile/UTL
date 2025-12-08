@@ -44,11 +44,11 @@ int main() {
 
     // Unsequenced execution means that we don't care about floating-point operation
     // happening in order, the compiler is allowed vectorize this loop
-    benchmark("std::for_each(std::execution::seq)", [&] {
-        double sum = 0;
-        std::for_each(std::execution::unseq, data.begin(), data.end(), [&](double e) { sum += e; });
-        DO_NOT_OPTIMIZE_AWAY(sum);
-    });
+    // benchmark("std::for_each(std::execution::unseq)", [&] {
+    //     double sum = 0;
+    //     std::for_each(std::execution::unseq, data.begin(), data.end(), [&](double e) { sum += e; });
+    //     DO_NOT_OPTIMIZE_AWAY(sum);
+    // });
     
 #endif
 
