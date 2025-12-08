@@ -34,6 +34,8 @@ int main() {
         DO_NOT_OPTIMIZE_AWAY(sum);
     });
 
+#ifdef  __cpp_lib_execution // because libc++ is extremely behind on C++17 support
+
     benchmark("std::for_each(std::execution::seq)", [&] {
         double sum = 0;
         std::for_each(std::execution::seq, data.begin(), data.end(), [&](double e) { sum += e; });
@@ -47,6 +49,8 @@ int main() {
         std::for_each(std::execution::unseq, data.begin(), data.end(), [&](double e) { sum += e; });
         DO_NOT_OPTIMIZE_AWAY(sum);
     });
+    
+#endif
 
     // Explicitly 4-unroll the loop for vectorization
     benchmark("Manual 4-unrolled loop", [&] {
